@@ -149,15 +149,28 @@ print("--- added noise ---")
 #   closest POI from the POI dataset. You can use the   #
 #   get_distance_in_meters function.                    #
 # Task 1: Match noisy data
+# Add a new column "closest_poi" to the noisy_tdata dataframe
 noisy_tdata["closest_poi"] = ""
+
+# Iterate over each row in the noisy_tdata dataframe
 for i, row in noisy_tdata.iterrows():
+    # Initialize the minimum distance to infinity
     min_distance = float('inf')
+    # Initialize the closest_poi variable to None
     closest_poi = None
+    
+    # Iterate over each row in the pdata dataframe
     for j, poi_row in pdata.iterrows():
+        # Calculate the distance between the current row in noisy_tdata and the current row in pdata
         distance = get_distance_in_meters(row["lat"], row["lon"], poi_row["lat"], poi_row["lon"])
+        
+        # Check if the calculated distance is smaller than the current minimum distance
         if distance < min_distance:
+            # Update the minimum distance and closest_poi variables
             min_distance = distance
             closest_poi = poi_row["poi_id"]
+    
+    # Assign the closest_poi value to the "closest_poi" column in the current row of noisy_tdata
     noisy_tdata.at[i, "closest_poi"] = closest_poi
 
 print("Noisy data:", noisy_tdata)
@@ -166,74 +179,54 @@ noisy_tdata.to_csv('noisy_tripdata.csv', index=False)
 
 
 #########################################################
-#                                                       #
 #   Task 2: Measuring Privacy Gain                      #
-#   Measure privacy gain as represented by the ratio of #
-#   the number of incorrectly matched POIs, to the      #
-#   total number of POIs associated with the users.     #
-#   Match trip data to POI data without noise
-#   compare to entries of matching with noisy data
-#   if data entries differ then increment counter of incorrectly matched POIs                                                       #
-#   display data as number of incorrectly matched POIs over used rows
-#   Match trip data to POI data without noise
-tdata["closest_poi"] = ""
-for i, row in tdata.iterrows():
-    min_distance = float('inf')
-    closest_poi = None
-    for j, poi_row in pdata.iterrows():
-        distance = get_distance_in_meters(row["lat"], row["lon"], poi_row["lat"], poi_row["lon"])
-        if distance < min_distance:
-            min_distance = distance
-            closest_poi = poi_row["poi_id"]
-    tdata.at[i, "closest_poi"] = closest_poi
+#########################################################
+# Measure privacy gain as represented by the ratio of the number of incorrectly matched POIs, 
+# to the total number of POIs associated with the users.
+# Task 2: Measuring Privacy Gain
+# Measure privacy gain as represented by the ratio of the number of incorrectly matched POIs,
+# to the total number of POIs associated with the users.
 
-# Compare entries of matching with noisy data
-incorrectly_matched_pois = 0
-for i, row in noisy_tdata.iterrows():
-    if row["closest_poi"] != tdata.at[i, "closest_poi"]:
-        incorrectly_matched_pois += 1
+incorrect_matches = 0
+for index, row in noisy_tdata.iterrows():
+    if tdata.iloc[index]['poi'] != row['closest_poi']:
+        incorrect_matches += 1
 
-# Calculate privacy gain
-privacy_gain = incorrectly_matched_pois / len(pdata)
-
+privacy_gain = incorrect_matches / len(tdata)
 print("Privacy Gain:", privacy_gain)
-#                                                       #
-#########################################################
+# Result: Privacy Gain: 0.42
 
 
 #########################################################
-#                                                       #
 #   Task 3: Measuring Utility Loss                      #
-#   Calculate the utility loss in terms of the          #
-#   additional walking distance users have to walk to   #
-#   the new locations.
-#   measure the distance of the noisy trip data to poi positions
-#   compare the data of non noisy trip data to poi positions
-#   compute the average distance that has to be walked
-# Measure the distance of the noisy trip data to POI positions
-noisy_tdata["distance_to_poi"] = 0
-for i, row in noisy_tdata.iterrows():
-    min_distance = float('inf')
-    for j, poi_row in pdata.iterrows():
-        distance = get_distance_in_meters(row["lat"], row["lon"], poi_row["lat"], poi_row["lon"])
-        if distance < min_distance:
-            min_distance = distance
-    noisy_tdata.at[i, "distance_to_poi"] = min_distance
-
-# Compare the data of non-noisy trip data to POI positions
-tdata["distance_to_poi"] = 0
-for i, row in tdata.iterrows():
-    min_distance = float('inf')
-    for j, poi_row in pdata.iterrows():
-        distance = get_distance_in_meters(row["lat"], row["lon"], poi_row["lat"], poi_row["lon"])
-        if distance < min_distance:
-            min_distance = distance
-    tdata.at[i, "distance_to_poi"] = min_distance
-
-# Compute the average distance that has to be walked
-average_distance_noisy = noisy_tdata["distance_to_poi"].mean()
-average_distance_non_noisy = tdata["distance_to_poi"].mean()
-utility_loss = average_distance_noisy - average_distance_non_noisy
-print("Utility Loss:", utility_loss)
-#                                                       #
 #########################################################
+# Calculate the utility loss in terms of the additional walking distance users have to walk 
+# to the new locations. Measure the distance of the noisy trip data to POI positions and 
+# compare the data of non-noisy trip data to POI positions. Compute the average distance that 
+# has to be walked.
+# Calculate the total difference in distance between the original trip data and the noisy trip data
+total_distance_difference = 0
+
+# Iterate over each row in the noisy_tdata dataframe
+for index, row in noisy_tdata.iterrows():
+    # Calculate the distance between the original location and the original POI location
+    original_distance = get_distance_in_meters(
+        tdata.iloc[index]['lat'], tdata.iloc[index]['lon'],
+        pdata.loc[pdata['poi_id'] == tdata.iloc[index]['poi'], 'lat'].values[0],
+        pdata.loc[pdata['poi_id'] == tdata.iloc[index]['poi'], 'lon'].values[0])
+    
+    # Calculate the distance between the noisy location and the closest POI location
+    noisy_distance = get_distance_in_meters(
+        row['lat'], row['lon'],
+        pdata.loc[pdata['poi_id'] == row['closest_poi'], 'lat'].values[0],
+        pdata.loc[pdata['poi_id'] == row['closest_poi'], 'lon'].values[0])
+    
+    # Add the difference in distance to the total distance difference
+    total_distance_difference += (noisy_distance - original_distance)
+
+# Calculate the average additional distance that needs to be walked
+average_additional_distance = total_distance_difference / len(tdata)
+
+# Print the average utility loss in meters
+print("Average Utility Loss (meters):", average_additional_distance)
+# Result: Average Utility Loss (meters): 8.294935822683216
