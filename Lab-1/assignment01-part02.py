@@ -194,7 +194,8 @@ for index, row in noisy_tdata.iterrows():
 
 privacy_gain = incorrect_matches / len(tdata)
 print("Privacy Gain:", privacy_gain)
-# Result: Privacy Gain: 0.42
+
+# Result: Privacy Gain: 0.44
 
 
 #########################################################
@@ -229,4 +230,5 @@ average_additional_distance = total_distance_difference / len(tdata)
 
 # Print the average utility loss in meters
 print("Average Utility Loss (meters):", average_additional_distance)
-# Result: Average Utility Loss (meters): 8.294935822683216
+
+# Result: Average Utility Loss (meters): 2.7253269605888892
